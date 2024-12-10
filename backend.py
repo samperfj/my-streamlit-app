@@ -117,20 +117,23 @@ class RecommenderNet(keras.Model):
             )
 
     def call(self, inputs):
-        # Use tf.nn.embedding_lookup for efficient embedding retrieval
         user_ids = tf.cast(inputs[:, 0], tf.int32)
         item_ids = tf.cast(inputs[:, 1], tf.int32)
 
-        with tf.device('/CPU:0'):  # Force embedding lookups on CPU
+        # Replace invalid indices with a default valid index (e.g., 0)
+        user_ids = tf.where(user_ids < 0, tf.zeros_like(user_ids), user_ids)
+        item_ids = tf.where(item_ids < 0, tf.zeros_like(item_ids), item_ids)
+
+        with tf.device('/CPU:0'):
             user_embedding = tf.nn.embedding_lookup(self.user_embedding_matrix, user_ids)
             user_bias = tf.nn.embedding_lookup(self.user_bias, user_ids)
             item_embedding = tf.nn.embedding_lookup(self.item_embedding_matrix, item_ids)
             item_bias = tf.nn.embedding_lookup(self.item_bias, item_ids)
 
-        # Compute dot product and final prediction
         dot_user_item = tf.reduce_sum(user_embedding * item_embedding, axis=1, keepdims=True)
         x = dot_user_item + user_bias + item_bias
         return tf.nn.relu(x)
+
   
     
 # Process dataset and map user and item ids to indices
