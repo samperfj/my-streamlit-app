@@ -89,44 +89,46 @@ class RecommenderNet(keras.Model):
         self.num_items = num_items
         self.embedding_size = embedding_size
 
-        # User embedding layer forced to run on CPU
-        with tf.device('/CPU:0'):
-            self.user_embedding_layer = layers.Embedding(
-                input_dim=num_users,
-                output_dim=embedding_size,
-                name='user_embedding_layer',
-                embeddings_initializer="he_normal",
-                embeddings_regularizer=keras.regularizers.l2(1e-6),
+        # Initialize embedding matrices and biases
+        with tf.device('/CPU:0'):  # Force Embedding layer computation on CPU
+            self.user_embedding_matrix = self.add_weight(
+                shape=(num_users, embedding_size),
+                initializer="he_normal",
+                trainable=True,
+                name="user_embedding_matrix",
             )
-            # User bias layer
-            self.user_bias = layers.Embedding(
-                input_dim=num_users,
-                output_dim=1,
-                name="user_bias"
+            self.user_bias = self.add_weight(
+                shape=(num_users, 1),
+                initializer="zeros",
+                trainable=True,
+                name="user_bias",
             )
-            # Item embedding layer
-            self.item_embedding_layer = layers.Embedding(
-                input_dim=num_items,
-                output_dim=embedding_size,
-                name='item_embedding_layer',
-                embeddings_initializer="he_normal",
-                embeddings_regularizer=keras.regularizers.l2(1e-6),
+            self.item_embedding_matrix = self.add_weight(
+                shape=(num_items, embedding_size),
+                initializer="he_normal",
+                trainable=True,
+                name="item_embedding_matrix",
             )
-            # Item bias layer
-            self.item_bias = layers.Embedding(
-                input_dim=num_items,
-                output_dim=1,
-                name="item_bias"
+            self.item_bias = self.add_weight(
+                shape=(num_items, 1),
+                initializer="zeros",
+                trainable=True,
+                name="item_bias",
             )
 
     def call(self, inputs):
-        # Standard forward pass
-        user_vector = self.user_embedding_layer(inputs[:, 0])
-        user_bias = self.user_bias(inputs[:, 0])
-        item_vector = self.item_embedding_layer(inputs[:, 1])
-        item_bias = self.item_bias(inputs[:, 1])
+        # Use tf.nn.embedding_lookup for efficient embedding retrieval
+        user_ids = tf.cast(inputs[:, 0], tf.int32)
+        item_ids = tf.cast(inputs[:, 1], tf.int32)
 
-        dot_user_item = tf.tensordot(user_vector, item_vector, 2)
+        with tf.device('/CPU:0'):  # Force embedding lookups on CPU
+            user_embedding = tf.nn.embedding_lookup(self.user_embedding_matrix, user_ids)
+            user_bias = tf.nn.embedding_lookup(self.user_bias, user_ids)
+            item_embedding = tf.nn.embedding_lookup(self.item_embedding_matrix, item_ids)
+            item_bias = tf.nn.embedding_lookup(self.item_bias, item_ids)
+
+        # Compute dot product and final prediction
+        dot_user_item = tf.reduce_sum(user_embedding * item_embedding, axis=1, keepdims=True)
         x = dot_user_item + user_bias + item_bias
         return tf.nn.relu(x)
   
