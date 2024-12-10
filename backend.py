@@ -89,39 +89,38 @@ class RecommenderNet(keras.Model):
         self.num_items = num_items
         self.embedding_size = embedding_size
 
-        # User embedding layer
-        self.user_embedding_layer = layers.Embedding(
-            input_dim=num_users,
-            output_dim=embedding_size,
-            name='user_embedding_layer',
-            embeddings_initializer="he_normal",
-            embeddings_regularizer=keras.regularizers.l2(1e-6),
-        )
-
-        # User bias layer
-        self.user_bias = layers.Embedding(
-            input_dim=num_users,
-            output_dim=1,
-            name="user_bias"
-        )
-
-        # Item embedding layer
-        self.item_embedding_layer = layers.Embedding(
-            input_dim=num_items,
-            output_dim=embedding_size,
-            name='item_embedding_layer',
-            embeddings_initializer="he_normal",
-            embeddings_regularizer=keras.regularizers.l2(1e-6),
-        )
-
-        # Item bias layer
-        self.item_bias = layers.Embedding(
-            input_dim=num_items,
-            output_dim=1,
-            name="item_bias"
-        )
+        # User embedding layer forced to run on CPU
+        with tf.device('/CPU:0'):
+            self.user_embedding_layer = layers.Embedding(
+                input_dim=num_users,
+                output_dim=embedding_size,
+                name='user_embedding_layer',
+                embeddings_initializer="he_normal",
+                embeddings_regularizer=keras.regularizers.l2(1e-6),
+            )
+            # User bias layer
+            self.user_bias = layers.Embedding(
+                input_dim=num_users,
+                output_dim=1,
+                name="user_bias"
+            )
+            # Item embedding layer
+            self.item_embedding_layer = layers.Embedding(
+                input_dim=num_items,
+                output_dim=embedding_size,
+                name='item_embedding_layer',
+                embeddings_initializer="he_normal",
+                embeddings_regularizer=keras.regularizers.l2(1e-6),
+            )
+            # Item bias layer
+            self.item_bias = layers.Embedding(
+                input_dim=num_items,
+                output_dim=1,
+                name="item_bias"
+            )
 
     def call(self, inputs):
+        # Standard forward pass
         user_vector = self.user_embedding_layer(inputs[:, 0])
         user_bias = self.user_bias(inputs[:, 0])
         item_vector = self.item_embedding_layer(inputs[:, 1])
