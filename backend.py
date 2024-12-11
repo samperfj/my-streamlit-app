@@ -120,9 +120,13 @@ class RecommenderNet(keras.Model):
         user_ids = tf.cast(inputs[:, 0], tf.int32)
         item_ids = tf.cast(inputs[:, 1], tf.int32)
 
-        # Replace invalid indices with a default valid index (e.g., 0)
-        user_ids = tf.where(user_ids < 0, tf.zeros_like(user_ids), user_ids)
-        item_ids = tf.where(item_ids < 0, tf.zeros_like(item_ids), item_ids)
+        # Log the range of user and item IDs
+        tf.print("User IDs:", user_ids)
+        tf.print("Item IDs:", item_ids)
+
+        # Clip indices to ensure they are within the valid range
+        user_ids = tf.clip_by_value(user_ids, 0, self.num_users - 1)
+        item_ids = tf.clip_by_value(item_ids, 0, self.num_items - 1)
 
         with tf.device('/CPU:0'):
             user_embedding = tf.nn.embedding_lookup(self.user_embedding_matrix, user_ids)
@@ -133,6 +137,7 @@ class RecommenderNet(keras.Model):
         dot_user_item = tf.reduce_sum(user_embedding * item_embedding, axis=1, keepdims=True)
         x = dot_user_item + user_bias + item_bias
         return tf.nn.relu(x)
+
 
   
     
